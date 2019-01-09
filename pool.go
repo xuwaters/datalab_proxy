@@ -177,11 +177,15 @@ func (pool *DatalabPool) processDockerEvents(ctx context.Context) {
 		case <-ctx.Done():
 			log.Printf("DONE: container docker events goroutine")
 			return
-		case event, _ := <-pool.dockerEvents:
-			log.Printf("docker event: %#v", event)
+		case event, ok := <-pool.dockerEvents:
+			if !ok {
+				log.Printf("ERROR: docker events closed, quit goroutine")
+				return
+			}
 			if event == nil {
 				break
 			}
+			log.Printf("docker event: %#v", event)
 			switch event.Type {
 			case "container":
 				pool.onEventContainer(event)
