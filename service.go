@@ -110,6 +110,7 @@ func (service *APIService) setupEngine() (err error) {
 	engine = gin.Default()
 	engine.Use(sessions.Sessions("datalab_session", store))
 
+	engine.GET("/_healthcheck", service.onRequestHealthCheck)
 	engine.POST("/datalab/start", service.onRequestDatalabStart)
 	engine.GET("/datalab/view/:nonce/*destination", service.onRequestDatalabView)
 	engine.GET("/datalab/static/:nonce/*destination", service.onRequestDatalabFiles)
@@ -132,6 +133,21 @@ func (service *APIService) sendOKResponse(c *gin.Context, result gin.H) {
 		"code":   "OK",
 		"result": result,
 	})
+}
+
+func (service *APIService) onRequestHealthCheck(c *gin.Context) {
+	var key = c.Query("key")
+	if service.config.HealthCheckKey == key {
+		c.JSON(http.StatusOK, gin.H{
+			"code":   "OK",
+			"result": "",
+		})
+	} else {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    "ERR_INVALID_REQUEST",
+			"message": "",
+		})
+	}
 }
 
 func (service *APIService) onRequestDatalabStart(c *gin.Context) {
@@ -299,8 +315,8 @@ func (service *APIService) onRequestDatalabFiles(c *gin.Context) {
 	}
 
 	var sess = sessions.Default(c)
-  sess.Set("container_id", containerID)
-  if err = sess.Save(); err != nil {
+	sess.Set("container_id", containerID)
+	if err = sess.Save(); err != nil {
 		log.Printf("save session data failure: %v", err)
 		c.JSON(http.StatusInternalServerError, "internal server error")
 		return
@@ -333,8 +349,8 @@ func (service *APIService) onRequestDatalabFiles(c *gin.Context) {
 			req.URL.RawQuery = targetQuery + req.URL.RawQuery
 		} else {
 			req.URL.RawQuery = targetQuery + "&" + req.URL.RawQuery
-    }
-    req.Header.Set("Host", req.Host)
+		}
+		req.Header.Set("Host", req.Host)
 	}
 	var httpProxy = &httputil.ReverseProxy{Director: director}
 	httpProxy.ServeHTTP(c.Writer, c.Request)
@@ -405,21 +421,21 @@ func (service *APIService) checkAndUpdateDatalabTTL(containerID string, c *gin.C
 }
 
 func NewSingleHostReverseProxyKeepHost(target *url.URL) *httputil.ReverseProxy {
-  targetQuery := target.RawQuery
-  director := func(req *http.Request) {
-    req.URL.Scheme = target.Scheme
-    req.URL.Host = target.Host
-    req.URL.Path = singleJoiningSlash(target.Path, req.URL.Path)
-    if targetQuery == "" || req.URL.RawQuery == "" {
-      req.URL.RawQuery = targetQuery + req.URL.RawQuery
-    } else {
-      req.URL.RawQuery = targetQuery + "&" + req.URL.RawQuery
-    }
-    if _, ok := req.Header["User-Agent"]; !ok {
-      // explicitly disable User-Agent so it's not set to default value
-      req.Header.Set("User-Agent", "")
-    }
-    req.Header.Set("Host", req.Host)
-  }
-  return &httputil.ReverseProxy{Director: director}
+	targetQuery := target.RawQuery
+	director := func(req *http.Request) {
+		req.URL.Scheme = target.Scheme
+		req.URL.Host = target.Host
+		req.URL.Path = singleJoiningSlash(target.Path, req.URL.Path)
+		if targetQuery == "" || req.URL.RawQuery == "" {
+			req.URL.RawQuery = targetQuery + req.URL.RawQuery
+		} else {
+			req.URL.RawQuery = targetQuery + "&" + req.URL.RawQuery
+		}
+		if _, ok := req.Header["User-Agent"]; !ok {
+			// explicitly disable User-Agent so it's not set to default value
+			req.Header.Set("User-Agent", "")
+		}
+		req.Header.Set("Host", req.Host)
+	}
+	return &httputil.ReverseProxy{Director: director}
 }

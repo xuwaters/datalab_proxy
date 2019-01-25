@@ -22,6 +22,7 @@ Service:
   TLSEnabled: false
   TLSCertFile: ""
   TLSKeyFile: ""
+  HealthCheckKey: ""
 
 Datalab:
   HookScriptMaxExecutionSeconds: 300
@@ -63,6 +64,7 @@ type ServiceConfig struct {
 	TLSEnabled        bool
 	TLSCertFile       string
 	TLSKeyFile        string
+	HealthCheckKey    string
 }
 
 type DatalabConfig struct {
@@ -159,11 +161,11 @@ func checkConfig(config *Config) (err error) {
 	}
 	if config.Datalab.InstanceKeepAliveTimeout <= 0 {
 		config.Datalab.InstanceKeepAliveTimeout = 300
-  }
-  
-  if config.Datalab.HookScriptMaxExecutionSeconds <= 0 {
-    config.Datalab.HookScriptMaxExecutionSeconds = 300
-  }
+	}
+
+	if config.Datalab.HookScriptMaxExecutionSeconds <= 0 {
+		config.Datalab.HookScriptMaxExecutionSeconds = 300
+	}
 
 	return
 }
