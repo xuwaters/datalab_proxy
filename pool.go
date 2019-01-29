@@ -415,20 +415,34 @@ func (pool *DatalabPool) runScript(script string, variables map[string]string) (
 	ctx, cancel := context.WithDeadline(context.Background(), deadLine)
 	defer cancel()
 
-	pool.executeCommandAndWait(ctx, cmdList)
+	err = pool.executeCommandAndWait(ctx, cmdList)
+	if err != nil {
+		log.Printf("run script error = %+v", err)
+	}
 
 	log.Printf("run script success: %v", cmdList)
 	return
 }
 
-func (pool *DatalabPool) executeCommandAndWait(ctx context.Context, cmdList []string) {
+func (pool *DatalabPool) executeCommandAndWait(ctx context.Context, cmdList []string) error {
 	var cmd *exec.Cmd
 	cmd = exec.CommandContext(ctx, cmdList[0], cmdList[1:]...)
 
 	var err error
 	var cmdStdoutReader, cmdStderrReader io.ReadCloser
 	cmdStdoutReader, err = cmd.StdoutPipe()
+	if err != nil {
+		log.Printf("create stdout pipe failure: err = %v", err)
+		return err
+	}
+	defer cmdStdoutReader.Close()
 	cmdStderrReader, err = cmd.StderrPipe()
+	if err != nil {
+		log.Printf("create stderr pipe failure: err = %v", err)
+		return err
+	}
+	defer cmdStderrReader.Close()
+
 	cmd.Start()
 
 	go CtxCopy(ctx, os.Stdout, cmdStdoutReader)
@@ -436,8 +450,9 @@ func (pool *DatalabPool) executeCommandAndWait(ctx context.Context, cmdList []st
 
 	if err = cmd.Wait(); err != nil {
 		log.Printf("run script failure: %v, err = %v", cmdList, err)
-		return
+		return err
 	}
+	return nil
 }
 
 func (pool *DatalabPool) replaceStringVariables(source string, variables map[string]string) string {
