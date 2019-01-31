@@ -193,7 +193,7 @@ func (service *APIService) onRequestDatalabStart(c *gin.Context) {
 	if filename == "" {
 		filename = "default.ipynb"
 	}
-	filename = regexp.MustCompile("(^[.]+)|([^a-zA-Z-_./]+)").ReplaceAllString(filename, "")
+	filename = regexp.MustCompile("(^[.]+)|([^0-9a-zA-Z-_./]+)").ReplaceAllString(filename, "")
 	filename = strings.Replace(filename, "/", "_", -1)
 
 	if c.Request.ContentLength > service.config.MaxContentLength {
