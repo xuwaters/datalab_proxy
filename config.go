@@ -23,6 +23,7 @@ Service:
   TLSCertFile: ""
   TLSKeyFile: ""
   HealthCheckKey: ""
+  WaitForContainerReadyTimeout: 30
 
 Datalab:
   HookScriptMaxExecutionSeconds: 300
@@ -65,6 +66,7 @@ type ServiceConfig struct {
 	TLSCertFile       string
 	TLSKeyFile        string
 	HealthCheckKey    string
+	WaitForContainerReadyTimeout  int // wait for container service ready timeout
 }
 
 type DatalabConfig struct {

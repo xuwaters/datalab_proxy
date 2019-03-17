@@ -232,12 +232,41 @@ func (service *APIService) onRequestDatalabStart(c *gin.Context) {
 		}
 	}
 
+	service.waitForContainerServiceReady(containerID, service.config.WaitForContainerReadyTimeout)
+
 	log.Printf("start datalab success: container_id = %s, nonce = %s", containerID, nonce)
 	service.sendOKResponse(c, gin.H{
 		"nonce": nonce,
 	})
 
 	return
+}
+
+func (service *APIService) waitForContainerServiceReady(containerID string, maxWaitSeconds int) {
+	instAddress, err := datalabPool.GetInstanceAddressByContainerID(containerID)
+	if err != nil {
+		log.Printf("wait for container service: get serivce address failure: %s, err = %v", containerID, err)
+		return
+	}
+
+	startTime := time.Now().Unix()
+	for i := 0; i < 60; i++ {
+		_, err := http.Get(instAddress)
+		if err != nil {
+			log.Printf("Wait for container service ready try: %d, err = %v", i, err)
+			time.Sleep(2 * time.Second)
+			if time.Now().Unix() - startTime > int64(maxWaitSeconds) {
+				log.Printf("Wait for container service timeout: %d", i)
+				break
+			}
+			continue
+		} else {
+			log.Printf("Wait for container service ready success: %d", i)
+			break
+		}
+	}
+	tryDuration := time.Now().Unix() - startTime
+	log.Printf("Wait for container service duration: %d", tryDuration)
 }
 
 func (service *APIService) calculateSignature(strList ...string) string {
@@ -352,7 +381,11 @@ func (service *APIService) onRequestDatalabFiles(c *gin.Context) {
 		}
 		req.Header.Set("Host", req.Host)
 	}
-	var httpProxy = &httputil.ReverseProxy{Director: director}
+	errorHandler := func(rw http.ResponseWriter, req *http.Request, err error) {
+		log.Printf("onRequestDatalabFiles proxy error: %v, uri = %s", err, req.RequestURI)
+		rw.WriteHeader(http.StatusBadGateway)
+	}
+	var httpProxy = &httputil.ReverseProxy{Director: director, ErrorHandler: errorHandler}
 	httpProxy.ServeHTTP(c.Writer, c.Request)
 }
 
@@ -437,5 +470,9 @@ func NewSingleHostReverseProxyKeepHost(target *url.URL) *httputil.ReverseProxy {
 		}
 		req.Header.Set("Host", req.Host)
 	}
-	return &httputil.ReverseProxy{Director: director}
+	errorHandler := func(rw http.ResponseWriter, req *http.Request, err error) {
+		log.Printf("SingleHostReverseProxyKeepHost proxy error: %v, uri = %s", err, req.RequestURI)
+		rw.WriteHeader(http.StatusBadGateway)
+	}
+	return &httputil.ReverseProxy{Director: director, ErrorHandler: errorHandler}
 }
