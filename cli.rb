@@ -9,19 +9,21 @@ class CLI < Thor
     super(*args)
     @curr_dir = File.expand_path('.', __dir__)
     @curr_time = Time.now.strftime('%Y-%m-%dT%H:%M:%SZ%z')
+    @go_path = File.dirname(@curr_dir)
+    @bin_name = 'datalab_proxy'
   end
 
   desc 'go [ARGS]', 'call go command'
   def go(*args)
     inside(@curr_dir) do
-      run %(GO111MODULE=on go #{args.join(' ')})
+      run %(GOPATH="#{@go_path}" GO111MODULE=on go #{args.join(' ')})
     end
   end
 
   desc 'build', 'build current project'
   def build
     inside(@curr_dir) do
-      run %(rm -f ./bin/datalab_proxy)
+      run %(rm -f ./bin/#{@bin_name})
     end
     extra_options = ''
     extra_options = %(-gcflags all="-N -l") if ENV['DEBUG_BUILD'] == '1'
@@ -29,7 +31,7 @@ class CLI < Thor
       'build',
       %(-ldflags "-X main.BuiltTime=#{@curr_time}"),
       extra_options,
-      '-o bin/datalab_proxy',
+      %(-o bin/#{@bin_name}),
       '.'
     )
   end
