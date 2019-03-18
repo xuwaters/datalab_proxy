@@ -250,7 +250,7 @@ func (service *APIService) waitForContainerServiceReady(containerID string, maxW
 	}
 
 	startTime := time.Now().Unix()
-	for i := 0; i < 60; i++ {
+	for i := 0; i < 300; i++ {
 		_, err := http.Get(instAddress)
 		if err != nil {
 			log.Printf("Wait for container service ready try: %d, err = %v", i, err)
